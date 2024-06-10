@@ -1,0 +1,51 @@
+service: rds-scheduler
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: provided.al2
+  architecture: arm64
+  # region: us-east-1
+  environment:
+    DATABASE: ${env:DATABASE}
+  iam:
+    role:
+      statements:
+        # Allow functions to read/write objects in a bucket
+        - Effect: Allow
+          Action:
+            - 'rds:StopDBInstance'
+            - 'rds:StartDBInstance'
+          Resource:
+            - ${env:DATABASE_ARN}
+
+package:
+  individually: true
+
+functions:
+  stop-rds:
+    handler: stop-rds/main.go
+    events:
+      - httpApi:
+          path: /stop-rds
+          method: get
+      - schedule: ${env:STOP_SCHEDULE}
+  start-rds:
+    handler: start-rds/main.go
+    events:
+      - httpApi:
+          path: /start-rds
+          method: get
+      - schedule: ${env:START_SCHEDULE}
+
+plugins:
+  - serverless-go-plugin
+
+custom:
+  go:
+    binDir: bin
+    supportedRuntimes: ["provided.al2"]
+    buildProvidedRuntimeAsBootstrap: true
+
